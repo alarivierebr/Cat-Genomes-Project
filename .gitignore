@@ -229,3 +229,4 @@ plink_files_pca/
 *.err
 test_files/
 *.csi
+config

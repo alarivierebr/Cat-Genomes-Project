@@ -12,9 +12,10 @@
 #SBATCH --output=%x-%A_%a.out
 #SBATCH --error=%x-%A_%a.err
 
+source config
 
-WD=""
-OUT_DIR="${WD}/filtered_vcf"
+WD="${WORK_DIR}"
+OUT_DIR="${OUTPUT_DIR}"
 
 INPUT_VCF="${WD}/cohort.full.vcf.gz"
 INDEX="${WD}/cohort.full.vcf.gz.csi"
