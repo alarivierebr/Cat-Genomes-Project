@@ -215,7 +215,7 @@ Filtering
 
 record_counter = 0
 
-for record in tqdm.tqdm(vcf_in):
+for record in tqdm.tqdm(vcf_in): #TODO #Take out tqdm cause it makes a really long log file...
 
     record_counter += 1
 
