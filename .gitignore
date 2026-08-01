@@ -228,3 +228,4 @@ plink_files_pca/
 *.out
 *.err
 test_files/
+*.csi
