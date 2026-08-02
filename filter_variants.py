@@ -3,7 +3,6 @@ import argparse
 import pysam
 import logging
 import statistics
-import tqdm
 from dataclasses import dataclass
 from typing import List, Optional
 #---------------#
@@ -215,7 +214,7 @@ Filtering
 
 record_counter = 0
 
-for record in tqdm.tqdm(vcf_in): #TODO #Take out tqdm cause it makes a really long log file...
+for record in vcf_in:
 
     record_counter += 1
 
