@@ -9,8 +9,8 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
 
-#SBATCH --output=/mnt/autofs/data/userdata/project0076/annalise/filtering/logs/%x-%A_%a.out
-#SBATCH --error=/mnt/autofs/data/userdata/project0076/annalise/filtering/logs/%x-%A_%a.err
+#SBATCH --output=/mnt/autofs/data/userdata/project0076/annalise/filtering/logs/%x-%j.out
+#SBATCH --error=/mnt/autofs/data/userdata/project0076/annalise/filtering/logs/%x-%j.err
 
 #SBATCH --mail-user=3175404l@student.gla.ac.uk
 #SBATCH --mail-type=BEGIN,END,FAIL
