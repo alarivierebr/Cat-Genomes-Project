@@ -37,11 +37,11 @@ mutyper variants "${FELIDAE_ANC}" "${COHORT_ANN}" \
 	-Oz \
 	--threads "${SLURM_CPUS_PER_TASK}" \
 	--write-index=tbi \
-	-o "${OUT_DIR}/cohort_felidae_var.vcf.gz"
+	-o "${OUT_DIR}/nO_cohort_felidae_var.vcf.gz"
 
 mutyper variants "${FELIS_ANC}" "${COHORT_ANN}" \
 	| bcftools view \
 	-Oz \
 	--threads "${SLURM_CPUS_PER_TASK}" \
 	--write-index=tbi \
-	-o "${OUT_DIR}/cohort_felis_var.vcf.gz"
+	-o "${OUT_DIR}/nO_cohort_felis_var.vcf.gz"

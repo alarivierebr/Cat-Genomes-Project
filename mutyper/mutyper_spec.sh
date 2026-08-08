@@ -20,11 +20,11 @@ OUT_DIR="/mnt/autofs/data/userdata/project0076/annalise/filtering/mutyper/spectr
 
 mkdir -p "${OUT_DIR}"
 
-FELIDAE_VCF="/mnt/autofs/data/userdata/project0076/annalise/filtering/mutyper/cohort_felidae_var.vcf.gz"
-FELIS_VCF="/mnt/autofs/data/userdata/project0076/annalise/filtering/mutyper/cohort_felis_var.vcf.gz"
+FELIDAE_VCF="/mnt/autofs/data/userdata/project0076/annalise/filtering/mutyper/nO_cohort_felidae_var.vcf.gz"
+FELIS_VCF="/mnt/autofs/data/userdata/project0076/annalise/filtering/mutyper/nO_cohort_felis_var.vcf.gz"
 
-OUTPUT_FELIDAE="felidae_mut.tsv"
-OUTPUT_FELIS="felis_mut.tsv"
+OUTPUT_FELIDAE="nO_felidae_mut.tsv"
+OUTPUT_FELIS="nO_felis_mut.tsv"
 
 [[ -f "${FELIDAE_VCF}" ]] || {
     echo "ERROR: Missing input file: ${FELIDAE_VCF}" >&2
@@ -37,7 +37,7 @@ OUTPUT_FELIS="felis_mut.tsv"
 }
 
 mutyper spectra "${FELIDAE_VCF}" \
-    > "${OUT_DIR}/felidae_mut.tsv"
+    > "${OUT_DIR}/nO_felidae_mut.tsv"
 
 mutyper spectra "${FELIS_VCF}" \
-    > "${OUT_DIR}/felis_mut.tsv"
+    > "${OUT_DIR}/nO_felis_mut.tsv"
