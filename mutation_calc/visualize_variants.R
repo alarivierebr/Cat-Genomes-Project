@@ -25,3 +25,27 @@ library(ggplot2)
 #------- Input file and output prefix -------#
 input_file <-"/mnt/data/project0076/annalise/filtering/mutyper/spectra/nO_felidae_mut.NKnorm.csv"
 output_prefix <- "Felidae"
+
+# ------ Reading input file -------#
+
+data <- read.csv(
+    input_file,
+    header = TRUE,
+    check.names = FALSE
+)
+
+# ---- Setting up data frame ----- #
+
+sample_names <- data[[1]]
+
+mutation_data <- data[, -1, drop=FALSE]
+
+rownames(mutation_data) <- sample_names
+
+mutation_data <- as.data.frame(
+    lapply(mutation_data, as.numeric),
+    check.names = FALSE
+)
+
+rownames(mutation_data) <- sample_names
+
