@@ -224,7 +224,7 @@ __marimo__/
 *.vcf.gz
 *.tbi
 filtered_vcf/
-plink_files_pca/
+backup_filtered_vcf/
 *.out
 *.err
 test_files/
