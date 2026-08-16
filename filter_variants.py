@@ -36,7 +36,7 @@ AB_HIGH_BOUND_HET = 0.8
 
 AB_HIGH_BOUND_HOMO = 0.02
 
-DEPTH_LOW_BOUND = 6  #Do I want to use 6 or 10 here?
+DEPTH_LOW_BOUND = 6  #Do I want to use 6 or 10 here? Using 6 from tailored variant filtering procedure paper, less strict than DP <= 10 from
 GENOTYPE_QUAL_LOW_BOUND = 20
 CALLRATE_LOW_BOUND = 0.9
 
@@ -56,14 +56,13 @@ AB < 0.02
 Depth of at least 10 for all samples in a family in whole-genome data
 DP ≥ 10 (whole-genome only)
 
-Low allele-frequency (or absent) in population allele-frequency databases
-population_AF < 0.01 (recessive inheritance modes)
-population_AF < 0.001 (dominant inheritance modes)
+
 
 '''
 #Counters to see how many records are being filtered out
 qual_counter = 0
 alt_counter = 0 #biallelic counter
+sample_fail_counter = 0
 depth_counter = 0
 callrate_counter = 0
 genotype_qual_counter = 0
@@ -73,10 +72,19 @@ homo_allele_bal_counter = 0
 '''
 Defining some functions
 '''
+
+# ------------------
 #If the length of the Alts string found in a record is 1, return True, if its longer than 1, returns False
 def biallelic_check(record: pysam.VariantRecord) -> bool:
 
     return record.alts is None or len(record.alts) == 1
+#---------------------------
+
+#Since this version of the filter is meant to be used after bcftools -m -any, I 
+def allele_variant_type_check(record: pysam.VariantRecord) -> bool:
+
+    return len(record.alleles_variant_types) < 2 or record.alleles_variant_types[1] == "SNP"
+
 
 #gets genotype, if missing, returns None. If heterozygous, returns True, otherwise return False (homozygous)
 def zygosity_check(sample: pysam.VariantRecordSample) -> Optional[bool]:
@@ -95,16 +103,13 @@ def allele_balance_calc(sample: pysam.VariantRecordSample) -> Optional[float]:
     ref_depth = allele_depth[0]
     alt_depth = allele_depth[1]
 
-    # if ref_depth is None or ref_depth == 0 or alt_depth is None or alt_depth == 0:   #not sure about this part?
-    #     return None
-    # return alt_depth / (ref_depth + alt_depth)
 
     if ref_depth is None or alt_depth is None:
         return None
-    total = ref_depth + alt_depth  #calculating 
-    if total == 0:
+    total_depth = ref_depth + alt_depth  #calculating total depth
+    if total_depth == 0:
         return None
-    return alt_depth / total
+    return alt_depth / total_depth
 
 
 #Returns false if heterozygote allele balance is outside of 0.2 - 0.8 range, and anything less than 0.02 for homozygotes 
@@ -112,7 +117,8 @@ def ab_filter(allele_balance: float, is_hetero: bool) -> bool:
     if is_hetero:
         return AB_LOW_BOUND_HET <= allele_balance <= AB_HIGH_BOUND_HET  #if heterozygous, check if between 0.2 and 0.8
     return allele_balance < AB_HIGH_BOUND_HOMO
-    
+
+
 
 #testing a smaller subset of the samples for proof of concept earlier in making this script
 # vcf_in.subset_samples([
@@ -121,6 +127,8 @@ def ab_filter(allele_balance: float, is_hetero: bool) -> bool:
 #     "SAMN14425429"
 # ])
 
+
+#want to count how many pass and how many fail an individual threshold check for each variant for each sample, then determine the fraction of how many pass out of the total tested varaints for each sample, then if the fraction is high enough -> pass, if not throw the whole variant away for all samples
 '''
 The SampleStats dataclass stores depths, genotype quality, heterozygous AB, and homozygous AB for samples processed
 '''
@@ -134,6 +142,8 @@ class SampleStats:
     total_depth_missing: int = 0
     genotype_qual_missing: int = 0
     allele_depth_missing: int = 0
+    pass_all_count: int = 0
+    fail_count: int = 0
 
     '''
     The process sample function has multiple operations, it checks samples for:
@@ -152,21 +162,31 @@ class SampleStats:
         is_hetero = zygosity_check(sample)
         if is_hetero is None:
             self.missing_genotype_counter += 1
+            self.fail_count += 1
             return None
 
         total_depth = sample.get("DP")
         if total_depth is None:
             self.total_depth_missing += 1
+            self.fail_count += 1
+            return None
+        if total_depth <= DEPTH_LOW_BOUND:
+            self.fail_count += 1
             return None
 
         genotype_quality = sample.get("GQ")
         if genotype_quality is None:
             self.genotype_qual_missing += 1
+            self.fail_count += 1
+            return None
+        if genotype_quality <= GENOTYPE_QUAL_LOW_BOUND:
+            self.fail_count += 1
             return None
 
         allele_balance = allele_balance_calc(sample)
         if allele_balance is None:
             self.allele_depth_missing += 1
+            self.fail_count += 1
             return None
 
         if is_hetero:
@@ -176,6 +196,7 @@ class SampleStats:
 
         self.depths.append(total_depth)
         self.genotype_qualities.append(genotype_quality)
+        self.pass_all_count += 1
 
         return round(allele_balance, 3)
     '''
@@ -218,11 +239,19 @@ for record in vcf_in:
 
     record_counter += 1
 
+    # if record_counter > 10000:
+    #     break
     #Reject multiallelic records
-    if not biallelic_check(record):
+    # if not biallelic_check(record):
+    #     alt_counter += 1
+    #     continue
+
+    #if the record is not a SNP, add to counter and disregard
+    if not allele_variant_type_check(record):
         alt_counter += 1
         continue
 
+    
     #Store QC stats
     sample_stats = SampleStats([], [], [], [])
 
@@ -234,22 +263,26 @@ for record in vcf_in:
         allele_balance = sample_stats.process_sample(sample)
         if allele_balance is not None:
             ab_values[sample_name] = allele_balance
-
-    #Apply filtering
-    mean_depth = sample_stats.mean_depth()
-    if mean_depth is None or mean_depth <= DEPTH_LOW_BOUND:
-        depth_counter += 1
+    
+            
+    if sample_stats.pass_all_count / (sample_stats.pass_all_count + sample_stats.fail_count) < 0.9:  #if less than 90% of samples pass all of the filters, continue
+        sample_fail_counter += 1
         continue
+    #Apply filtering
+    # mean_depth = sample_stats.mean_depth()
+    # if mean_depth is None or mean_depth <= DEPTH_LOW_BOUND:
+    #     depth_counter += 1
+    #     continue
 
     callrate = sample_stats.callrate()
     if callrate is None or callrate <= CALLRATE_LOW_BOUND:
         callrate_counter += 1
         continue
 
-    mean_genotype_quality = sample_stats.mean_genotype_qual()
-    if mean_genotype_quality is None or mean_genotype_quality <= GENOTYPE_QUAL_LOW_BOUND:
-        genotype_qual_counter += 1
-        continue
+    # mean_genotype_quality = sample_stats.mean_genotype_qual()
+    # if mean_genotype_quality is None or mean_genotype_quality <= GENOTYPE_QUAL_LOW_BOUND:
+    #     genotype_qual_counter += 1
+    #     continue
 
     het_allele_bal = sample_stats.mean_het_allele_balance()
     if het_allele_bal is None or not ab_filter(het_allele_bal, True):
@@ -278,4 +311,4 @@ for record in vcf_in:
 vcf_out.close()
 
 #print summary, #TODO clean this up to be more readable in the output for final
-print(f"Quality count {qual_counter}, genotype count {genotype_qual_counter}, depth count {depth_counter}, callrate {callrate_counter}, alt count {alt_counter}")
+print(f"Quality count {qual_counter}, genotype count {genotype_qual_counter}, depth count {depth_counter}, callrate {callrate_counter}, alt count {alt_counter}, sample fail counter {sample_fail_counter}")
