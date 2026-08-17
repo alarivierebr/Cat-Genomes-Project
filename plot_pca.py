@@ -126,67 +126,84 @@ from matplotlib.patches import Ellipse
 
 
 # #--------------------- STARTS HERE-----------------#
-# # Read eigenvectors (PCA coordinates)
-# #pca = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/plink_files_pca/filtered/filtered_cohort_pca.eigenvec", sep=r"\s+")
-# pca = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/plink_files_pca/noOutlier_full/noOutlier_cohort_pca.eigenvec", sep=r"\s+")
-# #loading metadata, includes information on Breed and Group
-# metadata = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/plink_files_pca/metadata2.csv")
+# Read eigenvectors (PCA coordinates)
 
-# #merge metadata and pca coordinates into one data frame
-# pca=pca.merge(metadata, on="IID", how="left")
-
-# sns.set_theme(style="white", context="paper", font_scale=1.3)
-
-# plt.figure(figsize=(8, 7))
-
-# groups = pca["Group"].unique()
-
-# palette = sns.color_palette("hls", len(groups))
-
-# sns.scatterplot(
-#     data=pca,
-#     x="PC1",
-#     y="PC2",
-#     hue="Group",
-#     palette=palette,
-#     s=35,
-#     alpha=0.8,
-#     linewidth=0.2,
-#     edgecolor="black"
-#     )
-
-# plt.xlabel("PC1", fontsize=14)
-# plt.ylabel("PC2", fontsize=14)
-# plt.title("No Outlier PCA", fontsize=16, weight="bold")
-
-# # for breed, subset in pca.groupby("Breed"):
-# #     plt.scatter(
-# #         subset["PC1"],
-# #         subset["PC2"],
-# #         label=breed
-# #     )
-
-# plt.legend(
-#     title= "Breed",
-#     bbox_to_anchor=(1.02, 1),
-#     loc="upper left",
-#     frameon=True,
-#     fontsize=9,
-#     title_fontsize=10,
-# )
-
-# sns.despine()
-# plt.tight_layout()
-# plt.savefig("no_outlier_cohort_pca.png", dpi=600, bbox_inches="tight")
+pca = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/plink_files_pca/filtered/filtered_cohort_pca.eigenvec", sep=r"\s+")
+eigenval = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/plink_files_pca/filtered/filtered_cohort_pca.eigenval", header=None)
 
 
+variance_explained = eigenval[0] / eigenval[0].sum() * 100
+
+pc1_variance = variance_explained.iloc[0]
+pc2_variance = variance_explained.iloc[1]
+
+#loading metadata, includes information on Breed and Group
+metadata = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/plink_files_pca/metadata2.csv")
+
+#merge metadata and pca coordinates into one data frame
+pca=pca.merge(metadata, on="IID", how="left")
+
+sns.set_theme(style="white", context="paper", font_scale=1.3)
+
+plt.figure(figsize=(8, 7))
+
+groups = pca["Group"].unique()
+
+palette = sns.color_palette("hls", len(groups))
+
+sns.scatterplot(
+    data=pca,
+    x="PC1",
+    y="PC2",
+    hue="Group",
+    palette=palette,
+    s=35,
+    alpha=0.8,
+    linewidth=0.2,
+    edgecolor="black"
+    )
+
+plt.xlabel(
+    f"PC1 ({pc1_variance:.2f}%)", fontsize=14)
+plt.ylabel(
+    f"PC2 ({pc2_variance:.2f}%)", fontsize=14)
+plt.title("Test4 PCA", fontsize=16, weight="bold")
+
+plt.legend(
+    title= "Breed",
+    bbox_to_anchor=(1.02, 1),
+    loc="upper left",
+    frameon=True,
+    fontsize=9,
+    title_fontsize=10,
+)
+
+sns.despine()
+plt.tight_layout()
+plt.savefig("test4_base_pca.png", dpi=600, bbox_inches="tight")
 
 
 #--------------------Domestic Only Set-------------------#
 
-pca2 = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/plink_files_pca/noOutlier_maf_geno_filt/domestic_maf05_geno10_pca.eigenvec", sep=r"\s+")
+pca2 = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/dom/t4_dom_only.eigenvec", sep=r"\s+")
+eigenval = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/dom/t4_dom_only.eigenval", header=None)
+
+
+# variance calcs
+variance_explained = eigenval[0] / eigenval[0].sum() * 100
+
+pc1_variance = variance_explained.iloc[0]
+pc2_variance = variance_explained.iloc[1]
+
 #loading metadata, includes information on Breed and Group
-metadata = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/plink_files_pca/metadata_domestic.csv")
+metadata = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/plink_files_pca/metadata_domestic_grouped.csv")
+
+
+pca2.columns = [
+    "FID", "IID",
+    "PC1", "PC2", "PC3", "PC4", "PC5",
+    "PC6", "PC7", "PC8", "PC9", "PC10"
+]
 
 #merge metadata and pca coordinates into one data frame
 pca2=pca2.merge(metadata, on="IID", how="left")
@@ -213,16 +230,12 @@ sns.scatterplot(
     )
 
 
-plt.xlabel("PC1", fontsize=14)
-plt.ylabel("PC2", fontsize=14)
+plt.xlabel(
+    f"PC1 ({pc1_variance:.2f}%)", fontsize=14)
+plt.ylabel(
+    f"PC2 ({pc2_variance:.2f}%)", fontsize=14)
 plt.title("Domestic Only PCA, maf = 0.05, genotype = 0.1", fontsize=16, weight="bold")
 
-# for breed, subset in pca.groupby("Breed"):
-#     plt.scatter(
-#         subset["PC1"],
-#         subset["PC2"],
-#         label=breed
-#     )
 
 handles, labels = plt.gca().get_legend_handles_labels()
 order = sorted(zip(labels, handles), key = lambda x: x[0])
@@ -242,18 +255,37 @@ plt.legend(
 sns.despine()
 plt.tight_layout()
 plt.subplots_adjust(bottom=0.25)
-plt.savefig("domestic_only_cohort_pca.png", dpi=600, bbox_inches="tight")
+plt.savefig("T4_domestic_only_cohort_pca.png", dpi=600, bbox_inches="tight")
+
+
 
 
 
 #--------------------Wild Only Set-------------------#
 
-pca3 = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/plink_files_pca/noOutlier_maf_geno_filt/wild_maf05_geno10_pca.eigenvec", sep=r"\s+")
+pca3 = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/wild/t4_wild_only.eigenvec", sep=r"\s+", header=0)
+eigenval = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/wild/t4_wild_only.eigenval", header=None)
+
+variance_explained = eigenval[0] / eigenval[0].sum() * 100
+
+pc1_variance = variance_explained.iloc[0]
+pc2_variance = variance_explained.iloc[1]
+
+pca3.columns = [
+    "FID", "IID",
+    "PC1", "PC2", "PC3", "PC4", "PC5",
+    "PC6", "PC7", "PC8", "PC9", "PC10"
+]
+
 #loading metadata, includes information on Breed and Group
 metadata = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/plink_files_pca/metadata_wild.csv")
 
+pca3["IID"] = pca3["IID"].astype(str).str.strip()
+metadata["IID"] = metadata["IID"].astype(str).str.strip()
+
 #merge metadata and pca coordinates into one data frame
 pca3=pca3.merge(metadata, on="IID", how="left")
+
 
 sns.set_theme(style="white", context="paper", font_scale=1.3)
 
@@ -275,16 +307,33 @@ sns.scatterplot(
     edgecolor="black"
     )
 
-plt.xlabel("PC1", fontsize=14)
-plt.ylabel("PC2", fontsize=14)
+# m = pca3[pca3["IID"] == "SAMEA112127400"]
+
+# plt.scatter(
+#     m["PC1"],
+#     m["PC2"],
+#     s=250,
+#     facecolors="none",
+#     edgecolors="red",
+#     linewidths=3,
+#     zorder=100
+# )
+
+# plt.text(
+#     m["PC1"].iloc[0],
+#     m["PC2"].iloc[0],
+#     "  MARGARITA",
+#     fontsize=10,
+#     fontweight="bold",
+#     zorder=101
+# )
+
+plt.xlabel(
+    f"PC1 ({pc1_variance:.2f}%)", fontsize=14)
+plt.ylabel(
+    f"PC2 ({pc2_variance:.2f}%)", fontsize=14)
 plt.title("Wild Only PCA, maf = 0.05, genotype = 0.1", fontsize=16, weight="bold")
 
-# for breed, subset in pca.groupby("Breed"):
-#     plt.scatter(
-#         subset["PC1"],
-#         subset["PC2"],
-#         label=breed
-#     )
 
 plt.legend(
     title= "Breed",
@@ -297,7 +346,7 @@ plt.legend(
 
 sns.despine()
 plt.tight_layout()
-plt.savefig("wild_only_cohort_pca.png", dpi=600, bbox_inches="tight")
+plt.savefig("t4_wild_only_cohort_pca.png", dpi=600, bbox_inches="tight")
 
 
 #try to make plots with shapes AND colors, at least for domesti, merge the cross breeds into "cross breed" group
