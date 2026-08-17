@@ -27,23 +27,18 @@ library(janitor)
 
 # Set input csv file
 
-input_file <- "/mnt/autofs/data/userdata/project0076/annalise/filtering/R_plots/multiqc_general_stats_edited.csv"
+input_file <- "/mnt/autofs/data/userdata/project0076/annalise/filtering/R_plots/multiqc_general_stats_edited2.csv"
 merged_output <- "/mnt/autofs/data/userdata/project0076/annalise/filtering/R_plots/multiqc_general_stats_merged.csv"
+summary_stats_out <- "/mnt/autofs/data/userdata/project0076/annalise/filtering/R_plots/multiqc_summary_stats.csv"
+
 data <- read_csv(input_file, na = c("", "NA", "N/A", "NULL"))
 
 #janitor function to tidy up the column names in csv
 data <- clean_names(data)
 
-# checking columns
+# cleaning columns
 cat("Columns", ncol(data), "\n\n")
 
-#setting the columns other than sample to metrics
-metric_columns <- setdiff(
-    names(data),
-    c("sample", "Sample_ID")
-)
-
-#merging rows into one per sample
 data <- data %>%
     mutate(
         Sample_ID = sample %>%
@@ -53,6 +48,13 @@ data <- data %>%
             str_remove("-ERX[0-9]+$")
     )
 
+#setting the columns other than sample to metrics
+metric_columns <- setdiff(
+    names(data),
+    c("sample", "Sample_ID")
+)
+
+#removing empty rows
 data <- data %>%
     filter(
         !if_all(
@@ -98,7 +100,94 @@ merged_data <- data %>%
         .groups = "drop"
     )
 
-merged_data <- remove_empty(merged_data)
 
 print(merged_data, n = Inf)
 write_csv(merged_data, merged_output)
+
+
+# ---- Summary statistics  -------#
+
+keep_metrics <- c(
+
+    #Alignment related
+    
+    "percent_duplication",
+    "reads_mapped_percent",
+    "paired_percent",
+    "depth_10x",
+    "depth_30x",
+    "depth_median_coverage",
+    "number_records",
+    "number_snps",
+    "tstv",
+    "multiallelic_sites",
+    "multiallelic_snps"
+)
+
+missing_metrics <- setdiff(
+    keep_metrics,
+    names(merged_data)
+)
+
+if (length(missing_metrics) >0) {
+    stop(
+        "Metrics are missing, please check your csv: ",
+    paste(missing_metrics, collapse = ", ")
+    )
+}
+
+merged_data <- merged_data %>%
+    select(
+        Sample_ID,
+        all_of(keep_metrics)
+    )
+
+summary_long <- merged_data %>%
+    pivot_longer(
+        cols = all_of(keep_metrics),
+        names_to = "Metric",
+        values_to = "Value"
+    ) %>%
+    mutate(
+        Category = case_when(
+            Metric %in% c(
+                "percent_duplication",
+                "reads_mapped_percent",
+                "paired_percent"
+            ) ~ "Alignment",
+
+            Metric %in% c(
+                "depth_10x",
+                "depth_30x",
+                "depth_median_coverage"
+            ) ~ "Depth /Coverage",
+
+            Metric %in% c(
+                "number_records",
+                "number_snps",
+                "tstv",
+                "multiallelic_sites",
+                "multiallelic_snps"
+            ) ~ "Variants",
+
+            TRUE ~ "Other"
+        )
+    ) %>%
+    group_by(Metric) %>%
+    summarise(
+        N = sum(!is.na(Value)),
+        Mean = mean(Value, na.rm = TRUE),
+        Median = median(Value, na.rm = TRUE),
+        SD = sd(Value, na.rm = TRUE),
+        Min = min(Value, na.rm = TRUE),
+        Q1 = quantile(Value, 0.25, na.rm = TRUE),
+        Q3 = quantile(Value, 0.75, na.rm = TRUE),
+        IQR = IQR(Value, na.rm = TRUE),
+        Max = max(Value, na.rm = TRUE),
+        .groups = "drop"
+    )
+    
+
+print(summary_long)
+
+write_csv(summary_long, summary_stats_out)
