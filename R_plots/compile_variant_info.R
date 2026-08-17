@@ -37,30 +37,30 @@ data <- clean_names(data)
 # checking columns
 cat("Columns", ncol(data), "\n\n")
 
-#merging rows into one per sample
-data <- data %>%
-    mutate(
-        Sample_ID = sample %>%
-            str_remove("\\.(md|recal|deepvariant)$") %>%
-            str_remove("_[0-9]+$") %>%
-            str_remove("-*$")
-    )
-
 #setting the columns other than sample to metrics
 metric_columns <- setdiff(
     names(data),
     c("sample", "Sample_ID")
 )
 
+#merging rows into one per sample
 data <- data %>%
     mutate(
-        across(
+        Sample_ID = sample %>%
+            str_remove("\\.(md|recal|deepvariant)$") %>%
+            str_remove("_[0-9]+$") %>%
+            str_remove("-SRX[0-9]+$") %>%
+            str_remove("-ERX[0-9]+$")
+    )
+
+data <- data %>%
+    filter(
+        !if_all(
             all_of(metric_columns),
-            ~ suppressWarnings(as.numeric(.))
+            is.na
         )
     )
 
-#merging data
 
 #setting row priority because I want it to prioritize the recalibrated values over the markduplicates values.
 data <- data %>%
@@ -73,8 +73,11 @@ data <- data %>%
         )
     )
 
+
 data <- data %>%
     arrange(Sample_ID, row_priority)
+
+#merging data
 
 merged_data <- data %>%
     group_by(Sample_ID) %>%
