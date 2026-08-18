@@ -8,8 +8,8 @@ from matplotlib.patches import Ellipse
 # #--------------------- Full cohort-----------------#
 # Read eigenvectors (PCA coordinates)
 
-pca = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/plink_files_pca/filtered/filtered_cohort_pca.eigenvec", sep=r"\s+")
-eigenval = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/plink_files_pca/filtered/filtered_cohort_pca.eigenval", header=None)
+pca = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/final/final_pca.eigenvec", sep=r"\s+")
+eigenval = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/final/final_pca.eigenval", header=None)
 
 
 variance_explained = eigenval[0] / eigenval[0].sum() * 100
@@ -47,10 +47,10 @@ plt.xlabel(
     f"PC1 ({pc1_variance:.2f}%)", fontsize=14)
 plt.ylabel(
     f"PC2 ({pc2_variance:.2f}%)", fontsize=14)
-plt.title("Test4 PCA", fontsize=16, weight="bold")
+plt.title("Filtered PCA", fontsize=16, weight="bold")
 
 plt.legend(
-    title= "Breed",
+    title= "Group",
     bbox_to_anchor=(1.02, 1),
     loc="upper left",
     frameon=True,
@@ -60,13 +60,67 @@ plt.legend(
 
 sns.despine()
 plt.tight_layout()
-plt.savefig("test4_base_pca.png", dpi=600, bbox_inches="tight")
+plt.savefig("final_full_cohort_pca.png", dpi=600, bbox_inches="tight")
 
+#--------- PC3 and 4 -------------------#
+pca = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/final/final_pca.eigenvec", sep=r"\s+")
+eigenval = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/final/final_pca.eigenval", header=None)
+
+
+variance_explained = eigenval[0] / eigenval[0].sum() * 100
+
+pc1_variance = variance_explained.iloc[0]
+pc2_variance = variance_explained.iloc[1]
+
+#loading metadata, includes information on Breed and Group
+metadata = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/plink_files_pca/metadata2.csv")
+
+#merge metadata and pca coordinates into one data frame
+pca=pca.merge(metadata, on="IID", how="left")
+
+sns.set_theme(style="white", context="paper", font_scale=1.3)
+
+plt.figure(figsize=(8, 7))
+
+groups = pca["Group"].unique()
+
+palette = sns.color_palette("hls", len(groups))
+
+sns.scatterplot(
+    data=pca,
+    x="PC3",
+    y="PC4",
+    hue="Group",
+    palette=palette,
+    s=35,
+    alpha=0.8,
+    linewidth=0.2,
+    edgecolor="black"
+    )
+
+plt.xlabel(
+    f"PC3 ({pc1_variance:.2f}%)", fontsize=14)
+plt.ylabel(
+    f"PC4 ({pc2_variance:.2f}%)", fontsize=14)
+plt.title("Filtered PCA", fontsize=16, weight="bold")
+
+plt.legend(
+    title= "Group",
+    bbox_to_anchor=(1.02, 1),
+    loc="upper left",
+    frameon=True,
+    fontsize=9,
+    title_fontsize=10,
+)
+
+sns.despine()
+plt.tight_layout()
+plt.savefig("final_full_cohort_pca_3_4.png", dpi=600, bbox_inches="tight")
 
 #--------------------Domestic Only Set-------------------#
 
-pca2 = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/dom/t4_dom_only.eigenvec", sep=r"\s+")
-eigenval = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/dom/t4_dom_only.eigenval", header=None)
+pca2 = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/final/dom/dom_only_final.eigenvec", sep=r"\s+")
+eigenval = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/final/dom/dom_only_final.eigenval", header=None)
 
 
 # variance calcs
@@ -135,13 +189,13 @@ plt.legend(
 sns.despine()
 plt.tight_layout()
 plt.subplots_adjust(bottom=0.25)
-plt.savefig("T4_domestic_only_cohort_pca.png", dpi=600, bbox_inches="tight")
+plt.savefig("final_domestic_only_cohort_pca.png", dpi=600, bbox_inches="tight")
 
 
 #--------------------Domestic Only Set PC3 and 4-------------------#
 
-pca3 = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/dom/t4_dom_only.eigenvec", sep=r"\s+")
-eigenval = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/dom/t4_dom_only.eigenval", header=None)
+pca3 = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/final/dom/dom_only_final.eigenvec", sep=r"\s+")
+eigenval = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/final/dom/dom_only_final.eigenval", header=None)
 
 
 # variance calcs
@@ -210,7 +264,7 @@ plt.legend(
 sns.despine()
 plt.tight_layout()
 plt.subplots_adjust(bottom=0.25)
-plt.savefig("T4_domestic_only_cohort_pca_3_4.png", dpi=600, bbox_inches="tight")
+plt.savefig("final_domestic_only_cohort_pca_3_4.png", dpi=600, bbox_inches="tight")
 
 
 
@@ -218,8 +272,8 @@ plt.savefig("T4_domestic_only_cohort_pca_3_4.png", dpi=600, bbox_inches="tight")
 
 #--------------------Wild Only Set-------------------#
 
-pca4 = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/wild/t4_wild_only.eigenvec", sep=r"\s+", header=0)
-eigenval = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/wild/t4_wild_only.eigenval", header=None)
+pca4 = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/final/wild/wild_only_final.eigenvec", sep=r"\s+", header=0)
+eigenval = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/final/wild/wild_only_final.eigenval", header=None)
 
 variance_explained = eigenval[0] / eigenval[0].sum() * 100
 
@@ -281,15 +335,15 @@ plt.legend(
 
 sns.despine()
 plt.tight_layout()
-plt.savefig("t4_wild_only_cohort_pca.png", dpi=600, bbox_inches="tight")
+plt.savefig("final_wild_only_cohort_pca.png", dpi=600, bbox_inches="tight")
 
 
 
 
 #--------------------Wild Only Set PCs 3-4 -------------------#
 
-pca5 = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/wild/t4_wild_only.eigenvec", sep=r"\s+", header=0)
-eigenval = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/wild/t4_wild_only.eigenval", header=None)
+pca5 = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/final/wild/wild_only_final.eigenvec", sep=r"\s+", header=0)
+eigenval = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/final/wild/wild_only_final.eigenval", header=None)
 
 variance_explained = eigenval[0] / eigenval[0].sum() * 100
 
@@ -351,40 +405,39 @@ plt.legend(
 
 sns.despine()
 plt.tight_layout()
-plt.savefig("t4_wild_only_cohort_pca_3_4.png", dpi=600, bbox_inches="tight")
+plt.savefig("final_wild_only_cohort_pca_3_4.png", dpi=600, bbox_inches="tight")
 
 
 
 #------------------------- Breed split plots ------- #
 
-# Read eigenvectors (PCA coordinates)
-#pca = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/plink_files_pca/filtered/filtered_cohort_pca.eigenvec", sep=r"\s+")
-# pca = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/plink_files_pca/noOutlier_full/noOutlier_cohort_pca.eigenvec", sep=r"\s+")
+# #Read eigenvectors (PCA coordinates)
+# pca = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/test4_norm/test4_bcftools_filter/final/final_pca.eigenvec", sep=r"\s+")
 # #loading metadata, includes information on Breed and Group
 # metadata = pd.read_csv("/mnt/autofs/data/userdata/project0076/annalise/filtering/plink_files_pca/metadata.csv")
 
 # #merge metadata and pca coordinates into one data frame
 # pca=pca.merge(metadata, on="IID", how="left")
 
-#Ordering breeds by sample size
-# breed_order = (pca["Breed"].value_counts().sort_values(ascending=False).index)
+# #Ordering breeds by sample size
+# # breed_order = (pca["Breed"].value_counts().sort_values(ascending=False).index)
 
-# pca["Breed"] = pd.Categorical(pca["Breed"], categories=breed_order, ordered=True)
+# # pca["Breed"] = pd.Categorical(pca["Breed"], categories=breed_order, ordered=True)
 
 # sns.set_theme(style="white", context="paper", font_scale=1.4)
 
-# group_palette = {
-#     "Domestic": "#1b9e77",
-#     "Chaus": "#d95f02",
-#     "Margarita": "#ff0054",
-#     "Nigripes": "#00b4d8",
-#     "Silvestris": "#390099",
-#     "Bieti": "#fb6f92",
-#     "Lybica": "#008000",
-#     "Ornata": "#9e0059",
-#     "S.silvestris": "#ffba08",
-#     "S.ornata": "#0a9396",
-# }
+# # group_palette = {
+# #     "Domestic": "#1b9e77",
+# #     "Chaus": "#d95f02",
+# #     "Margarita": "#ff0054",
+# #     "Nigripes": "#00b4d8",
+# #     "Silvestris": "#390099",
+# #     "Bieti": "#fb6f92",
+# #     "Lybica": "#008000",
+# #     "Ornata": "#9e0059",
+# #     "S.silvestris": "#ffba08",
+# #     "S.ornata": "#0a9396",
+# # }
 
 
 # #Facet scatter plot
@@ -401,8 +454,8 @@ plt.savefig("t4_wild_only_cohort_pca_3_4.png", dpi=600, bbox_inches="tight")
 #     sns.scatterplot,
 #     x="PC1",
 #     y="PC2",
-#     hue="Group",
-#     palette=group_palette,
+#     hue="Breed",
+#     palette=palette,
 #     s=18,
 #     alpha=0.75,
 #     linewidth=0,
@@ -428,7 +481,7 @@ plt.savefig("t4_wild_only_cohort_pca_3_4.png", dpi=600, bbox_inches="tight")
 # g.figure.legend(
 #     handles,
 #     labels,
-#     title="Group",
+#     title="Breed",
 #     loc="center right",
 #     bbox_to_anchor=(1.00, 0.5),
 #     frameon=True,
@@ -441,7 +494,7 @@ plt.savefig("t4_wild_only_cohort_pca_3_4.png", dpi=600, bbox_inches="tight")
 #         ax.legend_.remove()
 
 # g.figure.suptitle(
-#     "No Outlier Cohort PCA by Breed",
+#     "Filtered Cohort by Breed",
 #     fontsize=15,
 #     weight="bold",
 #     y=1
@@ -450,12 +503,12 @@ plt.savefig("t4_wild_only_cohort_pca_3_4.png", dpi=600, bbox_inches="tight")
 # plt.tight_layout()
 
 # plt.savefig(
-#     "no_outlier_cohort_by_breed_group.png",
+#     "final_filtered_by_breed_group.png",
 #     dpi=600,
 #     bbox_inches="tight"
 # )
 
-#------------------------#
+# ------------------------#
 # ax.set_title("No Outlier Cohort PCA", fontsize=16, weight="bold")
 # ax.set_xlabel("PC1")
 # ax.set_ylabel("PC2")
