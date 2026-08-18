@@ -106,7 +106,7 @@ write_csv(merged_data, merged_output)
 
 
 # ---- Summary statistics  -------#
-
+#in case i want to add more columns later, or remove some
 keep_metrics <- c(
 
     #Alignment related
