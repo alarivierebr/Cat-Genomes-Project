@@ -1,4 +1,4 @@
-#!/user/bin/env Rscript
+
 
 #-------------
 # Goals:
@@ -35,13 +35,13 @@ library(colorspace)
 
 #------- Input file and output prefix -------#
 
-felidae_file <-"/mnt/data/project0076/annalise/pipeline/results/mutyper/felidae_mutyper.NKnorm.deseq2.csv"
-felis_file <- "/mnt/data/project0076/annalise/pipeline/results/mutyper/felis_mutyper.NKnorm.deseq2.csv"
+felidae_file <-"/mnt/data/project0076/annalise/filtering/pipeline/results/mutyper/felidae_mutyper.NKnorm.deseq2.csv"
+felis_file <- "/mnt/data/project0076/annalise/filtering/pipeline/results/mutyper/felis_mutyper.NKnorm.deseq2.csv"
 metadata_file <- "/mnt/autofs/data/userdata/project0076/annalise/filtering/mutation_calc/metadata_rplots_grouped.csv"
 
 #----- output dir --------#
 
-output_dir <-"/mnt/autofs/data/userdata/project0076/annalise/pipeline/results/plots"
+output_dir <-"/mnt/autofs/data/userdata/project0076/annalise/filtering/pipeline/plotting_scripts"
 
 dir.create(
     output_dir,
@@ -79,21 +79,29 @@ metadata <- read.csv(
     stringsAsFactors = FALSE
 )
 
+
+
 prepare_spectrum <- function(data, metadata) {
-    sample_ids <- data$sample
+
+    sample_ids <- as.character(data$sample)
 
     mutation_columns <- setdiff(
         colnames(data),
         "sample"
     )
     #Setting mutations numeric
-    X <- data[, mutation_columns, drop =FALSE]
-
+    X <- data[
+        , 
+        mutation_columns, 
+        drop =FALSE
+    ]
 
 
     X[] <- lapply(
         X,
-        function(x) as.numeric(as.character(x))
+        function(x) {
+            as.numeric(as.character(x))
+        }
     )
 
     metadata_index <- match(
@@ -110,11 +118,14 @@ prepare_spectrum <- function(data, metadata) {
         stop(
             paste(
                 "These samples are missing from metadata:",
-                paste(missing_samples, collapse = ",")
+                paste(
+                    missing_samples, 
+                    collapse = ","
+                    )
+                )
             )
-        
-        )
     }
+
     sample_metadata <- metadata[
         metadata_index,
         ,
@@ -132,16 +143,355 @@ prepare_spectrum <- function(data, metadata) {
     )
 }
 
-    #------- Felis and felidae data data prep ------#
+#------- Felis and felidae data prep ------#
 
-    felidae_data <- prepare_spectrum(
-        felidae,
-        metadata
+felidae_data <- prepare_spectrum(
+    felidae,
+    metadata
+)
+
+felis_data <- prepare_spectrum(
+    felis, metadata
+)
+
+make_group_pca <- function(
+    X_pca,
+    sample_metadata,
+    group_name,
+    reference_name,
+    output_dir,
+    breed_colours
+) {
+
+
+
+
+    keep <- !is.na(sample_metadata$Group) &
+            sample_metadata$Group == group_name
+
+    X_group <- X_pca[
+        keep,
+        ,
+        drop = FALSE
+    ]
+
+    metadata_group <- sample_metadata[
+        keep,
+        ,
+        drop = FALSE
+    ]
+
+    feature_variance <- apply(
+        X_group,
+        2,
+        var
     )
 
-    felis_data <- prepare_spectrum(
-        felis, metadata
+    X_group <- X_group[
+        ,
+        !is.na(feature_variance) &
+        feature_variance > 0,
+        drop = FALSE
+    ]
+
+    if (ncol(X_group) < 2) {
+
+        warning(
+            "Skipping ",
+            reference_name,
+            " ",
+            group_name,
+            " PCA: fewer than 2 variable features."
+        )
+
+        return(NULL)
+    }
+
+    # -----------------------------
+    # PCA
+    # -----------------------------
+
+    pca <- prcomp(
+        X_group,
+        center = TRUE,
+        scale. = TRUE
     )
+
+    # -----------------------------
+    # Variance explained
+    # -----------------------------
+
+    var_expl <- (
+        pca$sdev^2 /
+        sum(pca$sdev^2)
+    ) * 100
+
+    # -----------------------------
+    # PCA dataframe
+    # -----------------------------
+
+    pca_df <- data.frame(
+        sample = rownames(pca$x),
+        PC1 = pca$x[, 1],
+        PC2 = pca$x[, 2],
+        stringsAsFactors = FALSE
+    )
+
+    if (ncol(pca$x) >= 4) {
+
+        pca_df$PC3 <- pca$x[, 3]
+        pca_df$PC4 <- pca$x[, 4]
+
+    }
+
+    pca_df$Breed <- metadata_group[
+        pca_df$sample,
+        "Breed"
+    ]
+
+    pca_df$Breed <- factor(
+        pca_df$Breed
+    )
+
+    group_breeds <- unique(
+        as.character(pca_df$Breed)
+    )
+
+    group_breed_colours <- breed_colours[
+        names(breed_colours) %in% group_breeds
+    ]
+
+
+#---------- make pc 1 and 2 plot
+
+    p12 <- ggplot(
+        pca_df,
+        aes(
+            x = PC1,
+            y = PC2,
+            colour = Breed
+        )
+    ) +
+
+        geom_point(
+            size = 3.8,
+            alpha = 0.75
+        ) +
+
+        scale_colour_manual(
+            values = group_breed_colours
+        ) +
+
+        theme_classic(
+            base_size = 20
+        ) +
+
+        theme(
+            legend.position = "bottom",
+            legend.direction = "horizontal",
+            legend.title = element_text(size = 12),
+            legend.text = element_text(size = 8),
+            legend.key.size = unit(0.1, "cm"),
+            legend.key.width = unit(0.1, "cm"),
+            legend.spacing.x = unit(0.1, "cm"),
+            legend.box.spacing = unit(0.1, "cm"),
+            legend.margin = margin(0, 0, 0, 0),
+            plot.title = element_text(
+                size = 15,
+                face = "bold"
+            ),
+            legend.box = "vertical",
+            plot.margin = margin(5, 5, 5, 5),
+
+            plot.background = element_rect(
+                fill = "white",
+                colour = NA
+            ),
+
+            panel.background = element_rect(
+                fill = "white",
+                colour = NA
+            )
+        ) +
+
+        guides(
+            colour = guide_legend(
+                title = "Breed",
+                ncol = 6,
+                byrow = TRUE,
+                override.aes = list(
+                    size = 8,
+                    alpha = 0.9
+                )
+            )
+        ) +
+
+        labs(
+
+            title = paste0(
+                "Mutation Spectrum PCA - ",
+                group_name,
+                " - ",
+                reference_name,
+                " Reference"
+            ),
+
+            x = paste0(
+                "PC1 (",
+                round(var_expl[1], 1),
+                "% variance)"
+            ),
+
+            y = paste0(
+                "PC2 (",
+                round(var_expl[2], 1),
+                "% variance)"
+            ),
+
+            colour = "Breed"
+        )
+
+
+#----- PC 1 and 2 ----- saving #
+
+    pc12_file <- file.path(
+        output_dir,
+        paste0(
+            reference_name,
+            "_PCA_Deseq2_",
+            group_name,
+            "_1_2.png"
+        )
+    )
+
+    ggsave(
+        filename = pc12_file,
+        plot = p12,
+        width = 12,
+        height = 12,
+        dpi = 600
+    )
+
+
+#----------- PC 3 and 4-----#
+
+    if (ncol(pca$x) >= 4) {
+
+        p34 <- ggplot(
+            pca_df,
+            aes(
+                x = PC3,
+                y = PC4,
+                colour = Breed
+            )
+        ) +
+
+            geom_point(
+                size = 3.8,
+                alpha = 0.75
+            ) +
+
+            scale_colour_manual(
+                values = breed_colours
+            ) +
+
+            theme_classic(
+                base_size = 20
+            ) +
+
+            theme(
+                legend.position = "bottom",
+                legend.direction = "horizontal",
+                legend.title = element_text(size = 12),
+                legend.text = element_text(size = 8),
+                legend.key.size = unit(0.1, "cm"),
+                legend.key.width = unit(0.1, "cm"),
+                legend.spacing.x = unit(0.1, "cm"),
+                legend.box.spacing = unit(0.1, "cm"),
+                legend.margin = margin(0, 0, 0, 0),
+                plot.title = element_text(
+                    size = 15,
+                    face = "bold"
+                ),
+                legend.box = "vertical",
+                plot.margin = margin(5, 5, 5, 5),
+
+                plot.background = element_rect(
+                    fill = "white",
+                    colour = NA
+                ),
+
+                panel.background = element_rect(
+                    fill = "white",
+                    colour = NA
+                )
+            ) +
+
+            guides(
+                colour = guide_legend(
+                    title = "Breed",
+                    ncol = 6,
+                    byrow = TRUE,
+                    override.aes = list(
+                        size = 8,
+                        alpha = 0.9
+                    )
+                )
+            ) +
+
+            labs(
+
+                title = paste0(
+                    "Mutation Spectrum PCA - ",
+                    group_name,
+                    " - ",
+                    reference_name,
+                    " Reference"
+                ),
+
+                x = paste0(
+                    "PC3 (",
+                    round(var_expl[3], 1),
+                    "% variance)"
+                ),
+
+                y = paste0(
+                    "PC4 (",
+                    round(var_expl[4], 1),
+                    "% variance)"
+                ),
+
+                colour = "Breed"
+            )
+
+        pc34_file <- file.path(
+            output_dir,
+            paste0(
+                reference_name,
+                "_PCA_Deseq2_",
+                group_name,
+                "_3_4.png"
+            )
+        )
+
+
+        ggsave(
+            filename = pc34_file,
+            plot = p34,
+            width = 12,
+            height = 14,
+            dpi = 600
+        )
+
+    } else {
+
+        cat(
+            "PC3-PC4 not saved: fewer than 4 PCs available.\n"
+        )
+    }
+
+    invisible(pca)
+}
 
 
 #----- Analysis function
@@ -200,6 +550,119 @@ use_log_transform <- FALSE
         drop = FALSE
     ]
 
+    #-------groups-----#
+
+domestic_breeds <- sort(
+    unique(
+        na.omit(
+            as.character(
+                sample_metadata$Breed[
+                    sample_metadata$Group == "Domestic"
+                ]
+            )
+        )
+    )
+)
+
+wild_breeds <- sort(
+    unique(
+        na.omit(
+            as.character(
+                sample_metadata$Breed[
+                    sample_metadata$Group == "Wild"
+                ]
+            )
+        )
+    )
+)
+
+
+# Split Domestic breeds into groups of 6
+domestic_groups <- split(
+    domestic_breeds,
+    ceiling(
+        seq_along(domestic_breeds) / 6
+    )
+)
+
+
+# Your selected palettes
+domestic_palette_names <- c(
+    "Mako",
+    "Emrld",
+    "Batlow",
+    "Red-Blue",
+    "Hawaii",
+    "Terrain",
+    "Purple-Blue",
+    "Purp"
+)
+
+
+# Create Domestic colours
+domestic_colours <- c()
+
+for (i in seq_along(domestic_groups)) {
+
+    breeds_in_group <- domestic_groups[[i]]
+
+    n_breeds <- length(
+        breeds_in_group
+    )
+
+    colours <- grDevices::hcl.colors(
+        n_breeds,
+        palette = domestic_palette_names[i]
+    )
+
+    names(colours) <- breeds_in_group
+
+    domestic_colours <- c(
+        domestic_colours,
+        colours
+    )
+}
+
+# Create Wild colours
+if (length(wild_breeds) > 0) {
+
+    wild_colours <- grDevices::hcl.colors(
+        length(wild_breeds),
+        palette = "Plasma"
+    )
+
+    names(wild_colours) <- wild_breeds
+
+} else {
+
+    wild_colours <- c()
+
+}
+
+breed_colours <- c(
+    domestic_colours,
+    wild_colours
+)
+
+#------- make domestic group PCA------#
+make_group_pca(
+    X_pca = X_pca,
+    sample_metadata = sample_metadata,
+    group_name = "Domestic",
+    reference_name = reference_name,
+    output_dir = output_dir,
+    breed_colours = breed_colours
+)
+# ------ make wild group PCA-----#
+make_group_pca(
+    X_pca = X_pca,
+    sample_metadata = sample_metadata,
+    group_name = "Wild",
+    reference_name = reference_name,
+    output_dir = output_dir,
+    breed_colours = breed_colours
+)
+
     #-------PCA-------# (Samples are rows, mut type are variables)
 
     pca <- prcomp(
@@ -255,20 +718,19 @@ use_log_transform <- FALSE
     domestic_breeds <- sort(
         unique(
             as.character(
-                pca_df$Breed[
-                    pca_df$Group == "Domestic"
+                sample_metadata$Breed[
+                    sample_metadata$Group == "Domestic"
                 ]
             )
         )
     )
     
 
-
     wild_breeds <- sort(
         unique(
             as.character(
-                pca_df$Breed[
-                    pca_df$Group == "Wild"
+                sample_metadata$Breed[
+                    sample_metadata$Group == "Wild"
                 ]
             )
         )
@@ -333,6 +795,24 @@ use_log_transform <- FALSE
         wild_colours
     )
 
+    make_group_pca(
+        X_pca = X_pca,
+        sample_metadata = sample_metadata,
+        group_name = "Domestic",
+        reference_name = reference_name,
+        output_dir = output_dir,
+        breed_colours = breed_colours
+    )
+
+    make_group_pca(
+    X_pca = X_pca,
+    sample_metadata = sample_metadata,
+    group_name = "Wild",
+    reference_name = reference_name,
+    output_dir = output_dir,
+    breed_colours = breed_colours
+    )
+
     # ---- relating breed to group
     breed_group <- aggregate(
         Group ~ Breed,
@@ -360,18 +840,6 @@ use_log_transform <- FALSE
         )
     }
 
-#----- old shapes and breed groups -----#
-
-    # breed_group <- breed_group[
-    #     match(
-    #         names(breed_colours),
-    #         breed_group$Breed
-    #     ),
-    #     ,
-    #     drop = FALSE
-    # ]
-
-
     #---setting shapes -----#
 
     group_shapes <- c(
@@ -379,33 +847,6 @@ use_log_transform <- FALSE
         Wild = 17
     )
 
-    # breed_shapes <- group_shapes[
-    #     as.character(
-    #         breed_group$Group
-    #     )
-    # ]
-
-    # names(breed_shapes) <- breed_group$Breed
-
-#----- old pcas -------#
-    # hcl_palettes("sequential (multi-hue)", n = 40, plot = TRUE)
-
-    # # Generate colours for each group
-    # domestic_colours <- grDevices::hcl.colours(
-    #     length(domestic_breeds),
-    #     palette = "Heat 2"
-    # )
-
-    # wild_colours <- grDevices::hcl.colours(
-    #     length(wild_breeds),
-    #     palette = "Blues"
-    # )
-
-    # Combine into one named vector
-    # breed_colours <- c(
-    #     setNames(domestic_colours, domestic_breeds),
-    #     setNames(wild_colours, wild_breeds)
-    # )
 
     breed_shapes <- group_shapes[
         breed_group_lookup[
@@ -463,13 +904,6 @@ use_log_transform <- FALSE
     
         ) +
 
-        # scale_x_continuous(
-        #     minor_breaks = scales::breaks_extended(n = 10)
-        # ) +
-
-        # scale_y_continuous(
-        #     minor_breaks = scales::breaks_extended(n = 10)
-        # ) +
 
         theme_classic(base_size=20) +
 
@@ -506,7 +940,6 @@ use_log_transform <- FALSE
                 ncol = 6,
                 byrow = TRUE,
                 override.aes = list(
-                    shape = breed_shapes,
                     size = 8,
                     alpha = 0.9
                 )
@@ -533,14 +966,14 @@ use_log_transform <- FALSE
         
 
             x = paste0(
-                "PC3 (",
-                round(var_expl[3], 1),
+                "PC1 (",
+                round(var_expl[1], 1),
                 "% variance)"
             ),
 
             y = paste0(
-                "PC4 (",
-                round(var_expl[4], 1),
+                "PC2 (",
+                round(var_expl[2], 1),
                 "% variance)"
             ),
 
@@ -555,7 +988,7 @@ use_log_transform <- FALSE
         output_dir,
         paste0(
             reference_name,
-            "_PCA_Deseq2_3_4.png"
+            "_PCA_Deseq2_1_2.png"
         )
     )
 
@@ -567,130 +1000,6 @@ use_log_transform <- FALSE
         dpi = 600
     )
 
-
-
-# ------ Centroid plot -------#
-
-    # ---- one label per breed ----#
-
-    breed_center <- aggregate(
-        cbind(PC1, PC2) ~ Breed,
-        data = pca_df,
-        FUN = mean
-    )
-
-    breed_labels <- do.call(
-        rbind,
-        lapply(
-            unique(pca_df$Breed),
-            function(breed) {
-
-                samples <- pca_df[
-                    pca_df$Breed == breed,
-                    ,
-                    drop = FALSE
-                ]
-
-                centroid <- breed_center[
-                    breed_center$Breed == breed,
-                    ,
-                    drop = FALSE
-                ]
-
-                distance <- (
-                    (samples$PC1 - centroid$PC1)^2 +
-                    (samples$PC2 - centroid$PC2)^2
-                )
-
-                samples[which.min(distance), ]
-            }
-        )
-    )
-
-    print(breed_labels)
-
-
-    centroid_plot <- ggplot(
-        breed_center,
-        aes(
-            x = PC1,
-            y = PC2
-        )
-    ) +
-
-        # geom_point(
-        #     shape = 21,
-        #     size = 6,
-        #     stroke = 1.2,
-        #     colour ="black",
-        #     fill = "white"
-        # ) +
-
-        geom_text_repel(
-            data = breed_labels,
-            aes(
-                x = PC1,
-                y = PC2,
-                label = Breed
-            ),
-            inherit.aes = FALSE,
-            size = 3,
-            colour = "black",
-            fontface = "bold",
-            box.padding = 0.7,
-            point.padding =0.3,
-            force = 2,
-            force_pull = 0.5,
-            max.overlaps = Inf,
-            min.segment.length = 0,
-            segment.size = 0.3
-        ) +
-
-        theme_classic(base_size = 16) +
-
-        theme(
-            plot.title = element_text(
-                size = 16,
-                face = "bold"
-            )
-        ) +
-
-        labs(
-            title = paste0(
-                "Breed centroids - ",
-                reference_name,
-                " reference"
-            ),
-
-            x = paste0(
-                "PC1 (",
-                round(var_expl[1], 1),
-                "%)"
-            ),
-
-            y = paste0(
-                "PC2 (",
-                round(var_expl[2], 1),
-                "%)"
-            ),
-
-        )
-        centroid_file <- file.path(
-            output_dir,
-            paste0(
-                reference_name,
-                "_PCA_centroids.png"
-            )
-        )
-
-        ggsave(
-            centroid_file,
-            centroid_plot,
-            width = 12,
-            height = 14,
-            dpi = 600
-        )
-
  }
 
 print(class(felidae_data))
@@ -698,6 +1007,9 @@ print(names(felidae_data))
 
 print(class(felis_data))
 print(names(felis_data))
+
+
+
 
 
 analyse_spectrum(
